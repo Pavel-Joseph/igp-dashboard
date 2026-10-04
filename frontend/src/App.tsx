@@ -49,19 +49,20 @@ function useRoute() {
 function go(path: string) { window.location.hash = path; window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
 function Landing() {
+  const today = new Date()
+  const day = new Intl.DateTimeFormat('en-IN', { day: '2-digit', timeZone: 'Asia/Kolkata' }).format(today)
+  const month = new Intl.DateTimeFormat('en-IN', { month: 'long', timeZone: 'Asia/Kolkata' }).format(today)
+  const year = new Intl.DateTimeFormat('en-IN', { year: 'numeric', timeZone: 'Asia/Kolkata' }).format(today)
   return <div className="landing">
-    <header className="public-header"><div className="public-header-inner"><a className="wordmark" href="#/"><span className="mark">IGP</span><span>India Giving Partnership<small>Programme & finance workspace</small></span></a><nav><a href="#/about">About the dashboard</a><button className="button button-solid" onClick={() => go('/login')}>Login <Icon name="arrow" size={17}/></button></nav></div></header>
+    <header className="public-header"><div className="public-header-inner"><a className="wordmark" href="#/"><span className="mark">IGP</span><span>Invisible Girl Project<small>Programme & finance workspace</small></span></a><nav><a href="#/about">About the dashboard</a><button className="button button-solid" onClick={() => go('/login')}>Login <Icon name="arrow" size={17}/></button></nav></div></header>
     <main className="landing-main">
-      <video className="hero-video" autoPlay muted loop playsInline preload="metadata" aria-hidden="true">
-        <source src="/sharona-and-adasha.mp4" type="video/mp4" />
-      </video>
-      <div className="landing-video-shade" aria-hidden="true" />
+      <img className="hero-image" src="/landing-background.png" alt="" aria-hidden="true" />
+      <div className="landing-image-shade" aria-hidden="true" />
       <div className="hero-copy">
-        <span className="hero-kicker"><span/> IGP INDIA · 2026 WORKSPACE</span>
-        <h1>We want a future in India with girls in it</h1>
-        <p>63 million girls are missing from India’s population. Join us in ending female gendercide!</p>
+        <h1>IGP INDIA FINANCE DASHBOARD</h1>
+        <p>We want a future in India with girls in it</p>
         <div className="hero-actions"><button className="button button-solid button-large" onClick={() => go('/login')}>Open dashboard preview <Icon name="arrow" size={19}/></button><span>Frontend preview · no live sign-in yet</span></div>
-        <div className="hero-stats"><div><b>10</b><span>Partners in workbook</span></div><div><b>2026</b><span>Current dashboard year</span></div><div><b>4</b><span>Workspace views</span></div></div>
+        <div className="hero-stats"><div><b>{day}</b><span>Day</span></div><div><b>{month}</b><span>Month</span></div><div><b>{year}</b><span>Year</span></div></div>
       </div>
     </main>
     <section className="landing-features" id="about"><div><Icon name="grant"/><h3>Partner grants</h3><p>See approved budgets, adjustments and final grant totals together.</p></div><div><Icon name="calendar"/><h3>Month-by-month schedules</h3><p>Follow planned transfers across all partner organisations.</p></div><div><Icon name="office"/><h3>India office management</h3><p>Review expenses by category and reporting month.</p></div></section><footer className="public-footer">IGP India Dashboard · Frontend preview based on the 2026 workbook</footer>
@@ -76,7 +77,7 @@ function Login({ onEnter }: { onEnter: (role: Role) => void }) {
     { role: 'ape', icon: 'book', text: 'Awareness and education workspace preview' },
     { role: 'partner', icon: 'users', text: 'Partner organisation workspace preview' },
   ]
-  return <div className="login-page"><div className="login-left"><a className="wordmark light" href="#/"><span className="mark">IGP</span><span>India Giving Partnership<small>Programme & finance workspace</small></span></a><div className="login-message"><span className="overline">IGP INDIA · 2026</span><h1>Welcome back to your workspace.</h1><p>Choose a workspace to preview how each login will enter the dashboard.</p></div><div className="login-visual"><span>2026 FINANCIAL DASHBOARD</span><div className="login-visual-bars"><i/><i/><i/><i/><i/><i/><i/></div><small>Partner programme overview</small></div></div><main className="login-right"><div className="login-content"><button className="text-link" onClick={() => go('/')}><span>←</span> Back to home</button><span className="overline pink">WORKSPACE ACCESS</span><h2>Choose your login</h2><p>Select a role to see its frontend preview. Real authentication will be connected with the backend.</p><div className="role-list">{choices.map(choice => <button key={choice.role} className={`role-choice ${selected === choice.role ? 'selected' : ''}`} onClick={() => setSelected(choice.role)}><span className="role-icon"><Icon name={choice.icon}/></span><span><b>{roleLabels[choice.role]}</b><small>{choice.text}</small></span><span className="radio-dot"/></button>)}</div><button className="button button-solid continue" onClick={() => onEnter(selected)}>Continue to preview <Icon name="arrow" size={18}/></button><div className="login-note"><Icon name="shield" size={16}/> Preview mode. No password or account data is collected.</div></div></main></div>
+  return <div className="login-page"><div className="login-left"><a className="wordmark light" href="#/"><span className="mark">IGP</span><span>Invisible Girl Project<small>Programme & finance workspace</small></span></a><div className="login-message"><span className="overline">IGP INDIA · 2026</span><h1>Welcome back to your workspace.</h1><p>Choose a workspace to preview how each login will enter the dashboard.</p></div><div className="login-visual"><span>2026 FINANCIAL DASHBOARD</span><div className="login-visual-bars"><i/><i/><i/><i/><i/><i/><i/></div><small>Partner programme overview</small></div></div><main className="login-right"><div className="login-content"><button className="text-link" onClick={() => go('/')}><span>←</span> Back to home</button><span className="overline pink">WORKSPACE ACCESS</span><h2>Choose your login</h2><p>Select a role to see its frontend preview. Real authentication will be connected with the backend.</p><div className="role-list">{choices.map(choice => <button key={choice.role} className={`role-choice ${selected === choice.role ? 'selected' : ''}`} onClick={() => setSelected(choice.role)}><span className="role-icon"><Icon name={choice.icon}/></span><span><b>{roleLabels[choice.role]}</b><small>{choice.text}</small></span><span className="radio-dot"/></button>)}</div><button className="button button-solid continue" onClick={() => onEnter(selected)}>Continue to preview <Icon name="arrow" size={18}/></button><div className="login-note"><Icon name="shield" size={16}/> Preview mode. No password or account data is collected.</div></div></main></div>
 }
 
 function StatCard({ label, value, detail, tone = 'blue' }: { label: string; value: string; detail: string; tone?: 'blue' | 'pink' | 'orange' | 'teal' }) {
