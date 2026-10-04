@@ -56,7 +56,7 @@ function Landing() {
   const month = new Intl.DateTimeFormat('en-IN', { month: 'long', timeZone: 'Asia/Kolkata' }).format(today)
   const year = new Intl.DateTimeFormat('en-IN', { year: 'numeric', timeZone: 'Asia/Kolkata' }).format(today)
   return <div className="landing">
-    <header className="public-header"><div className="public-header-inner"><a className="wordmark" href="#/"><span className="mark">IGP</span><span>Invisible Girl Project<small>Programme & finance workspace</small></span></a><nav><a href="#/about">About the dashboard</a><button className="button button-solid" onClick={() => go('/login')}>Login <Icon name="arrow" size={17}/></button></nav></div></header>
+    <header className="public-header"><div className="public-header-inner"><a className="wordmark" href="#/"><span className="mark">IGP</span><span>Invisible Girl Project<small>Programme & finance workspace</small></span></a><nav><button className="button button-solid" onClick={() => go('/login')}>Login <Icon name="arrow" size={17}/></button></nav></div></header>
     <main className="landing-main">
       <img className="hero-image" src="/landing-background.png" alt="" aria-hidden="true" />
       <div className="landing-image-shade" aria-hidden="true" />
@@ -67,7 +67,7 @@ function Landing() {
         <div className="hero-stats"><div><b>{day}</b><span>Day</span></div><div><b>{month}</b><span>Month</span></div><div><b>{year}</b><span>Year</span></div></div>
       </div>
     </main>
-    <section className="landing-features" id="about"><div><Icon name="grant"/><h3>Partner grants</h3><p>See approved budgets, adjustments and final grant totals together.</p></div><div><Icon name="calendar"/><h3>Month-by-month schedules</h3><p>Follow planned transfers across all partner organisations.</p></div><div><Icon name="office"/><h3>India office management</h3><p>Review expenses by category and reporting month.</p></div></section><footer className="public-footer">IGP India Dashboard · Frontend preview based on the 2026 workbook</footer>
+    <footer className="public-footer">IGP India Dashboard · Frontend preview based on the 2026 workbook</footer>
   </div>
 }
 
