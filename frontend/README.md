@@ -1,30 +1,35 @@
 # IGP India Dashboard frontend
 
-React + Vite frontend for the 2026 IGP dashboard. This is a **design preview**. The login choices switch preview workspaces; they are not authentication or security controls.
+React + Vite frontend. The production build uses Supabase Auth and the 2026 admin tables defined in `../database/001_admin_workbook.sql`.
 
-## Run locally
+## Local build
 
-```sh
-npm install
-npm run dev
+Run `npm install` and `npm run build` in this folder. For local live sign-in, create an ignored `.env.local` containing:
+
+```env
+VITE_SUPABASE_URL=https://iiabwxffqaizukeswptd.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 ```
 
-Open the local URL printed by Vite. `npm run build` checks TypeScript and creates a production frontend bundle in `dist/`.
+Use only the **publishable** key in Vite. Never place the Supabase secret/service-role key or database password in Vite or Git. The publishable key is designed for browser use; row-level security and a signed-in account control access.
 
-## Current pages
+## Vercel setup
 
-- Landing page and four-option login selection: Admin, Child Sponsor, Awareness & Preventive Education, Partners Login.
-- Admin: Dashboard, Partners Grant, Partners Schedule, Funds Received, India Office Management.
-- Partner preview: Dashboard and Q1–Q4 pages for RAISE, the sample signed-in organisation. The dashboard consolidates quarter budgets, funds received and expenses; shows annual balance/excess, girls counts and a two-ring quarter chart. Quarter pages accept funds-received and expense entries plus a NEW girls count. Preview entries are stored only in this browser's local storage. In the finished service the authenticated account must determine the partner on the server.
-- Child Sponsor: one dashboard showing ECC, CS, EA and NEW counts, plus a reported total for each partner and a programme comparison. ECC, CS and EA come from the workbook snapshot. NEW is shown only when a count was entered in this browser's partner preview; otherwise it remains unreported.
-- APE: one dashboard for JJS, BHS, CHF and KMVS with Target, YCM, PAT, DDF and Achieved columns. The supplied workbook snapshot provides targets for JJS and BHS only; unavailable programme values are shown as dashes. Workbook budget items named PAT and DDF are not used as programme results.
+In the Vercel project's **Settings → Environment Variables**, add the same two `VITE_` variables for Production. Redeploy after adding them; Vite reads them at build time. The local `.env.local` is Git-ignored and does not configure Vercel.
 
-## Preview data
+The app requires a Supabase Auth user and a matching `public.user_profiles` row. To establish the first admin:
 
-`src/data/workbookSnapshot.json` is a static, read-only extraction from the 2026 workbook. `scripts/extract_workbook_snapshot.py` documents the current mapping and can refresh this local preview from a workbook path. It never edits the workbook. On the partner dashboard, quarterly budget means the sum of scheduled transfers in that quarter. Expenses are empty until entered in the preview, and NEW is not supplied by the snapshot.
+1. In Supabase **Authentication → Users**, create or invite your own account.
+2. Copy that user's UUID, then run this in Supabase SQL Editor, replacing the placeholder:
+   `insert into public.user_profiles(id,role) values ('AUTH_USER_UUID'::uuid,'admin');`
+3. Sign in at the app's Login page.
 
-The **Funds Received** view currently maps to `Credit Data`; this mapping should be confirmed before treating it as the final funds-received model. Figures in the supplied dashboard screenshots may differ from this workbook snapshot. The frontend displays the workbook values, not values transcribed from the images.
+No email address or password is stored in the project source. Partner accounts later need `role='partner'` and the matching `partner_id`; RLS limits reads to that partner. Child Sponsor and APE users have their own assigned roles. A person cannot select a higher role from the browser.
 
-## Live Excel connection later
+## Current live scope
 
-A browser cannot safely open a workbook from a local `C:\` path for users across the internet. The live service will need the workbook in a managed shared location such as OneDrive for Business or SharePoint, a server-side connection to it, real authentication, role and partner checks on every request, and a separate audit/approval record. None of those backend pieces are part of this frontend preview.
+The Admin dashboard reads partner grants, programme figures, planned schedules, and monthly petty-cash totals from Supabase. Child Sponsor and APE dashboards read the metrics allowed by their database role. Partner pages read only the assigned partner's grant, schedule, and programme figures.
+
+Funds received, quarterly expenses, NEW girls counts, and APE outcome measures were not present in the admin workbook. Their live views show them as unavailable. Quarter entry forms remain read-only until their data tables and final edit/approval rules are defined. The two external-workbook schedule formulas are excluded from verified schedule totals.
+
+The earlier workbook preview and localStorage entry form are available only in development without Supabase environment variables. They are not the production data source.

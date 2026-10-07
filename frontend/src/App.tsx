@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react'
-import snapshot from './data/workbookSnapshot.json'
+import { useEffect, useState, type FormEvent } from 'react'
+import type { User } from '@supabase/supabase-js'
+import { DataProvider, useDashboardData, useLiveMode, type DashboardData } from './data/SnapshotContext'
+import { loadDashboardData } from './data/liveData'
+import { supabase } from './lib/supabase'
+import LivePartnerWorkspace from './LivePartnerWorkspace'
 import PartnerWorkspace from './PartnerWorkspace'
 import ChildSponsorDashboard from './ChildSponsorDashboard'
 import ApeDashboard from './ApeDashboard'
@@ -51,6 +55,7 @@ function useRoute() {
 function go(path: string) { window.location.hash = path; window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
 function Landing() {
+  const live = Boolean(supabase)
   const today = new Date()
   const day = new Intl.DateTimeFormat('en-IN', { day: '2-digit', timeZone: 'Asia/Kolkata' }).format(today)
   const month = new Intl.DateTimeFormat('en-IN', { month: 'long', timeZone: 'Asia/Kolkata' }).format(today)
@@ -63,11 +68,11 @@ function Landing() {
       <div className="hero-copy">
         <h1>IGP INDIA FINANCE DASHBOARD</h1>
         <p>We want a future in India with girls in it</p>
-        <div className="hero-actions"><button className="button button-solid button-large" onClick={() => go('/login')}>Open dashboard preview <Icon name="arrow" size={19}/></button><span>Frontend preview · no live sign-in yet</span></div>
+        <div className="hero-actions"><button className="button button-solid button-large" onClick={() => go('/login')}>{live ? 'Open dashboard' : 'Open dashboard preview'} <Icon name="arrow" size={19}/></button><span>{live ? 'Sign in to your workspace' : 'Frontend preview · no live sign-in yet'}</span></div>
         <div className="hero-stats"><div><b>{day}</b><span>Day</span></div><div><b>{month}</b><span>Month</span></div><div><b>{year}</b><span>Year</span></div></div>
       </div>
     </main>
-    <footer className="public-footer">IGP India Dashboard · Frontend preview based on the 2026 workbook</footer>
+    <footer className="public-footer">IGP India Dashboard · {live ? 'Live workspace' : 'Frontend preview based on the 2026 workbook'}</footer>
   </div>
 }
 
@@ -100,32 +105,39 @@ function Donut({ data }: { data: { name: string; value: number }[] }) {
 }
 
 function Dashboard() {
+  const snapshot = useDashboardData()
+  const live = useLiveMode()
   const grantTotal = sum(snapshot.partners.map(p => p.finalGrant))
   const scheduleTotal = sum(snapshot.partners.flatMap(p => p.schedule))
   const receivedTotal = sum(snapshot.partners.flatMap(p => p.received))
   const counts = [{ label: 'CS', value: sum(snapshot.partners.map(p => p.cs)) }, { label: 'EA', value: sum(snapshot.partners.map(p => p.ea)) }, { label: 'ECC', value: sum(snapshot.partners.map(p => p.ecc)) }]
   const ape = snapshot.partners.filter(p => p.apeTarget > 0).map(p => ({ label: p.name, value: p.apeTarget }))
-  return <><div className="section-intro"><div><span className="eyebrow">FINANCIAL OVERVIEW</span><h2>Dashboard</h2><p>Programme budgets, partner support and scheduled funding for 2026.</p></div><span className="source-pill">2026 workbook snapshot</span></div><div className="stats-grid"><StatCard label="Total programme budget" value={compact(snapshot.workbookTotals.budget)} detail="Before prior-year adjustments" tone="pink"/><StatCard label="Final partner grants" value={compact(grantTotal)} detail="Across 10 partners" tone="blue"/><StatCard label="Planned transfers" value={compact(scheduleTotal)} detail="January to December" tone="orange"/><StatCard label="Funds recorded" value={compact(receivedTotal)} detail="From Credit Data sheet" tone="teal"/></div><div className="dashboard-grid"><section className="surface allocation"><div className="surface-head"><div><span className="eyebrow">PARTNER DISTRIBUTION</span><h3>2026 final grants</h3></div><button className="mini-link" onClick={() => go('/admin/grants')}>View grants <Icon name="arrow" size={16}/></button></div><Donut data={snapshot.partners.map(p => ({ name: p.name, value: p.finalGrant }))}/></section><section className="surface"><div className="surface-head"><div><span className="eyebrow">PROGRAMME REACH</span><h3>People in the programme</h3></div></div><div className="count-chart">{counts.map((item, i) => <div key={item.label}><span>{item.label}</span><div><i style={{ width: `${item.value / Math.max(...counts.map(c => c.value), 1) * 100}%`, background: ['#e56a57', '#229cc8', '#8bc5dc'][i] }}/></div><strong>{item.value.toLocaleString('en-IN')}</strong></div>)}</div><p className="chart-foot">Counts come from the Partners Index sheet.</p></section><section className="surface"><div className="surface-head"><div><span className="eyebrow">AWARENESS & EDUCATION</span><h3>APE target by partner</h3></div></div><Bars data={ape} color="blue" maxHeight={180}/><p className="chart-foot">Total target: {sum(ape.map(a => a.value)).toLocaleString('en-IN')}</p></section><section className="surface"><div className="surface-head"><div><span className="eyebrow">UPCOMING ACTIVITY</span><h3>Monthly transfer schedule</h3></div><button className="mini-link" onClick={() => go('/admin/schedule')}>Full schedule <Icon name="arrow" size={16}/></button></div><Bars data={snapshot.months.map((m, i) => ({ label: m.slice(0, 3), value: sum(snapshot.partners.map(p => p.schedule[i])) }))} maxHeight={180}/></section></div></>
+  return <><div className="section-intro"><div><span className="eyebrow">FINANCIAL OVERVIEW</span><h2>Dashboard</h2><p>Programme budgets, partner support and scheduled funding for 2026.</p></div><span className="source-pill">{live ? 'Live database' : '2026 workbook snapshot'}</span></div><div className="stats-grid"><StatCard label="Total programme budget" value={compact(snapshot.workbookTotals.budget)} detail="Before prior-year adjustments" tone="pink"/><StatCard label="Final partner grants" value={compact(grantTotal)} detail="Across {snapshot.partners.length} partners" tone="blue"/><StatCard label="Planned transfers" value={compact(scheduleTotal)} detail={live ? 'Verified schedule cells only' : 'January to December'} tone="orange"/><StatCard label="Funds recorded" value={live ? '—' : compact(receivedTotal)} detail={live ? 'No receipt records supplied' : 'From Credit Data sheet'} tone="teal"/></div><div className="dashboard-grid"><section className="surface allocation"><div className="surface-head"><div><span className="eyebrow">PARTNER DISTRIBUTION</span><h3>2026 final grants</h3></div><button className="mini-link" onClick={() => go('/admin/grants')}>View grants <Icon name="arrow" size={16}/></button></div><Donut data={snapshot.partners.map(p => ({ name: p.name, value: p.finalGrant }))}/></section><section className="surface"><div className="surface-head"><div><span className="eyebrow">PROGRAMME REACH</span><h3>People in the programme</h3></div></div><div className="count-chart">{counts.map((item, i) => <div key={item.label}><span>{item.label}</span><div><i style={{ width: `${item.value / Math.max(...counts.map(c => c.value), 1) * 100}%`, background: ['#e56a57', '#229cc8', '#8bc5dc'][i] }}/></div><strong>{item.value.toLocaleString('en-IN')}</strong></div>)}</div><p className="chart-foot">Counts come from the Partners Index sheet.</p></section><section className="surface"><div className="surface-head"><div><span className="eyebrow">AWARENESS & EDUCATION</span><h3>APE target by partner</h3></div></div><Bars data={ape} color="blue" maxHeight={180}/><p className="chart-foot">Total target: {sum(ape.map(a => a.value)).toLocaleString('en-IN')}</p></section><section className="surface"><div className="surface-head"><div><span className="eyebrow">UPCOMING ACTIVITY</span><h3>Monthly transfer schedule</h3></div><button className="mini-link" onClick={() => go('/admin/schedule')}>Full schedule <Icon name="arrow" size={16}/></button></div><Bars data={snapshot.months.map((m, i) => ({ label: m.slice(0, 3), value: sum(snapshot.partners.map(p => p.schedule[i])) }))} maxHeight={180}/></section></div></>
 }
 
 function Grants() {
+  const snapshot = useDashboardData()
   const [selected, setSelected] = useState('All partners')
   const partners = selected === 'All partners' ? snapshot.partners : snapshot.partners.filter(p => p.name === selected)
   const budget = sum(partners.map(p => p.budget)), final = sum(partners.map(p => p.finalGrant))
   const current = selected === 'All partners' ? null : partners[0]
-  return <><PageHeading eyebrow="PARTNER FINANCE" title="Partners Grant" description="Compare 2026 approved budgets with final grant amounts after adjustments."/><div className="toolbar"><label>Partner<select value={selected} onChange={e => setSelected(e.target.value)}><option>All partners</option>{snapshot.partners.map(p => <option key={p.name}>{p.name}</option>)}</select></label><span className="toolbar-note">Source: Core Data · Partners Index</span></div><div className="stats-grid three"><StatCard label="Original budget" value={compact(budget)} detail="2026 grant budget" tone="pink"/><StatCard label="Final grant" value={compact(final)} detail="After adjustments" tone="blue"/><StatCard label="Adjustment" value={compact(final - budget)} detail="Final grant minus budget" tone="orange"/></div><div className="content-grid"><section className="surface"><div className="surface-head"><h3>Budget by partner</h3><span>2026</span></div><Bars data={partners.map(p => ({ label: p.name, value: p.finalGrant }))} maxHeight={250}/></section><section className="surface detail-card"><span className="eyebrow">{current ? `${current.name} DETAILS` : 'ALL PARTNERS'}</span><h3>{current ? 'Programme profile' : 'Grant overview'}</h3>{current ? <div className="detail-list"><div><span>Child sponsorship</span><b>{current.cs.toLocaleString('en-IN')}</b></div><div><span>Early child care</span><b>{current.ecc.toLocaleString('en-IN')}</b></div><div><span>Education assistance</span><b>{current.ea.toLocaleString('en-IN')}</b></div><div><span>Social workers</span><b>{current.socialWorkers.toLocaleString('en-IN')}</b></div><div><span>APE target</span><b>{current.apeTarget.toLocaleString('en-IN')}</b></div></div> : <><p>Select a partner to view the programme counts behind its budget.</p><div className="detail-highlight"><span>Partners in this view</span><strong>{snapshot.partners.length}</strong></div></>}</section></div><section className="surface table-surface"><div className="surface-head"><h3>Grant register</h3><span>{partners.length} partners</span></div><div className="table-scroll"><table><thead><tr><th>Partner</th><th>Original budget</th><th>Adjustment</th><th>Final grant</th><th>Scheduled</th></tr></thead><tbody>{partners.map(p => <tr key={p.name} onClick={() => setSelected(p.name)}><td><b>{p.name}</b></td><td>{rupees(p.budget)}</td><td className={p.finalGrant - p.budget < 0 ? 'negative' : ''}>{rupees(p.finalGrant - p.budget)}</td><td><b>{rupees(p.finalGrant)}</b></td><td>{rupees(sum(p.schedule))}</td></tr>)}</tbody><tfoot><tr><td>Total</td><td>{rupees(budget)}</td><td>{rupees(final - budget)}</td><td>{rupees(final)}</td><td>{rupees(sum(partners.flatMap(p => p.schedule)))}</td></tr></tfoot></table></div></section></>
+  return <><PageHeading eyebrow="PARTNER FINANCE" title="Partners Grant" description="Compare 2026 approved budgets with final grant amounts after adjustments."/><div className="toolbar"><label>Partner<select value={selected} onChange={e => setSelected(e.target.value)}><option>All partners</option>{snapshot.partners.map(p => <option key={p.name}>{p.name}</option>)}</select></label><span className="toolbar-note">Source: Partners Grant and Partners Index</span></div><div className="stats-grid three"><StatCard label="Original budget" value={compact(budget)} detail="2026 grant budget" tone="pink"/><StatCard label="Final grant" value={compact(final)} detail="After adjustments" tone="blue"/><StatCard label="Adjustment" value={compact(final - budget)} detail="Final grant minus budget" tone="orange"/></div><div className="content-grid"><section className="surface"><div className="surface-head"><h3>Budget by partner</h3><span>2026</span></div><Bars data={partners.map(p => ({ label: p.name, value: p.finalGrant }))} maxHeight={250}/></section><section className="surface detail-card"><span className="eyebrow">{current ? `${current.name} DETAILS` : 'ALL PARTNERS'}</span><h3>{current ? 'Programme profile' : 'Grant overview'}</h3>{current ? <div className="detail-list"><div><span>Child sponsorship</span><b>{current.cs.toLocaleString('en-IN')}</b></div><div><span>Early child care</span><b>{current.ecc.toLocaleString('en-IN')}</b></div><div><span>Education assistance</span><b>{current.ea.toLocaleString('en-IN')}</b></div><div><span>Social workers</span><b>{current.socialWorkers.toLocaleString('en-IN')}</b></div><div><span>APE target</span><b>{current.apeTarget.toLocaleString('en-IN')}</b></div></div> : <><p>Select a partner to view the programme counts behind its budget.</p><div className="detail-highlight"><span>Partners in this view</span><strong>{snapshot.partners.length}</strong></div></>}</section></div><section className="surface table-surface"><div className="surface-head"><h3>Grant register</h3><span>{partners.length} partners</span></div><div className="table-scroll"><table><thead><tr><th>Partner</th><th>Original budget</th><th>Adjustment</th><th>Final grant</th><th>Scheduled</th></tr></thead><tbody>{partners.map(p => <tr key={p.name} onClick={() => setSelected(p.name)}><td><b>{p.name}</b></td><td>{rupees(p.budget)}</td><td className={p.finalGrant - p.budget < 0 ? 'negative' : ''}>{rupees(p.finalGrant - p.budget)}</td><td><b>{rupees(p.finalGrant)}</b></td><td>{rupees(sum(p.schedule))}</td></tr>)}</tbody><tfoot><tr><td>Total</td><td>{rupees(budget)}</td><td>{rupees(final - budget)}</td><td>{rupees(final)}</td><td>{rupees(sum(partners.flatMap(p => p.schedule)))}</td></tr></tfoot></table></div></section></>
 }
 
 function Schedule() {
+  const snapshot = useDashboardData()
   const [month, setMonth] = useState(6)
-  const rows = snapshot.partners.map(p => ({ name: p.name, amount: p.schedule[month] }))
+  const rows = snapshot.partners.map(p => ({ name: p.name, amount: p.schedule[month], unverified: p.scheduleUnverified?.[month] ?? false }))
   const total = sum(rows.map(r => r.amount))
   const annual = sum(snapshot.partners.flatMap(p => p.schedule))
-  return <><PageHeading eyebrow="PARTNER FINANCE" title="Partners Schedule" description="See how planned partner transfers are distributed through 2026."/><div className="toolbar"><label>Reporting month<select value={month} onChange={e => setMonth(Number(e.target.value))}>{snapshot.months.map((m, i) => <option value={i} key={m}>{m}</option>)}</select></label><span className="toolbar-note">Source: Partners Funds</span></div><div className="stats-grid three"><StatCard label={`${snapshot.months[month]} schedule`} value={compact(total)} detail="Planned for selected month" tone="pink"/><StatCard label="Full-year schedule" value={compact(annual)} detail="All partner instalments" tone="blue"/><StatCard label="Partners scheduled" value={String(rows.filter(r => r.amount > 0).length)} detail={`In ${snapshot.months[month]}`} tone="orange"/></div><div className="content-grid wide-main"><section className="surface"><div className="surface-head"><h3>{snapshot.months[month]} by partner</h3><span>{rupees(total)} total</span></div><Bars data={rows.map(r => ({ label: r.name, value: r.amount }))} maxHeight={300}/></section><section className="surface"><h3>Year at a glance</h3><div className="month-list">{snapshot.months.map((m, i) => { const amount = sum(snapshot.partners.map(p => p.schedule[i])); return <button key={m} className={i === month ? 'active' : ''} onClick={() => setMonth(i)}><span>{m.slice(0, 3)}</span><i style={{ width: `${amount / 5_400_000 * 100}%` }}/><b>{compact(amount)}</b></button> })}</div></section></div><section className="surface table-surface"><div className="surface-head"><h3>{snapshot.months[month]} transfer detail</h3><span>Scheduled instalments</span></div><div className="table-scroll"><table><thead><tr><th>Partner</th><th>Scheduled amount</th><th>Share of month</th></tr></thead><tbody>{rows.map(r => <tr key={r.name}><td><b>{r.name}</b></td><td>{rupees(r.amount)}</td><td>{total ? (r.amount / total * 100).toFixed(1) : '0.0'}%</td></tr>)}</tbody></table></div></section></>
+  return <><PageHeading eyebrow="PARTNER FINANCE" title="Partners Schedule" description="See how planned partner transfers are distributed through 2026."/><div className="toolbar"><label>Reporting month<select value={month} onChange={e => setMonth(Number(e.target.value))}>{snapshot.months.map((m, i) => <option value={i} key={m}>{m}</option>)}</select></label><span className="toolbar-note">Source: Partners Schedule</span></div><div className="stats-grid three"><StatCard label={`${snapshot.months[month]} schedule`} value={compact(total)} detail="Planned for selected month" tone="pink"/><StatCard label="Full-year schedule" value={compact(annual)} detail="All partner instalments" tone="blue"/><StatCard label="Partners scheduled" value={String(rows.filter(r => r.amount > 0).length)} detail={`In ${snapshot.months[month]}`} tone="orange"/></div><div className="content-grid wide-main"><section className="surface"><div className="surface-head"><h3>{snapshot.months[month]} by partner</h3><span>{rupees(total)} total</span></div><Bars data={rows.map(r => ({ label: r.name, value: r.amount }))} maxHeight={300}/></section><section className="surface"><h3>Year at a glance</h3><div className="month-list">{snapshot.months.map((m, i) => { const amount = sum(snapshot.partners.map(p => p.schedule[i])); return <button key={m} className={i === month ? 'active' : ''} onClick={() => setMonth(i)}><span>{m.slice(0, 3)}</span><i style={{ width: `${amount / 5_400_000 * 100}%` }}/><b>{compact(amount)}</b></button> })}</div></section></div><section className="surface table-surface"><div className="surface-head"><h3>{snapshot.months[month]} transfer detail</h3><span>Scheduled instalments</span></div><div className="table-scroll"><table><thead><tr><th>Partner</th><th>Scheduled amount</th><th>Share of month</th></tr></thead><tbody>{rows.map(r => <tr key={r.name}><td><b>{r.name}</b></td><td>{r.unverified ? 'Unverified' : rupees(r.amount)}</td><td>{r.unverified ? '—' : total ? (r.amount / total * 100).toFixed(1) : '0.0'}%</td></tr>)}</tbody></table></div></section></>
 }
 
 function Received() {
+  const snapshot = useDashboardData()
+  const live = useLiveMode()
   const [month, setMonth] = useState(0)
+  if (live) return <><PageHeading eyebrow="FUND TRACKING" title="Funds Received" description="Actual receipts were not supplied in the admin workbook."/><section className="surface"><h3>No receipt records yet</h3><p>Scheduled transfers are available under Partners Schedule. This page will show actual receipts when their entry model is added.</p></section></>
   const rows = snapshot.partners.map(p => ({ name: p.name, amount: p.received[month], scheduled: p.schedule[month] }))
   const received = sum(rows.map(r => r.amount)), scheduled = sum(rows.map(r => r.scheduled))
   const yearReceived = sum(snapshot.partners.flatMap(p => p.received))
@@ -133,37 +145,115 @@ function Received() {
 }
 
 function Office() {
+  const snapshot = useDashboardData()
   const [month, setMonth] = useState(1)
   const expenses = snapshot.expenses.map(e => ({ category: e.category, amount: e.monthly[month] }))
   const total = sum(expenses.map(e => e.amount))
   const year = sum(snapshot.expenses.flatMap(e => e.monthly))
   const largest = [...expenses].sort((a, b) => b.amount - a.amount)[0]
-  return <><PageHeading eyebrow="INDIA OFFICE" title="India Office Management" description="Monitor petty cash and operational expenses by category."/><div className="toolbar"><label>Reporting month<select value={month} onChange={e => setMonth(Number(e.target.value))}>{snapshot.months.map((m, i) => <option value={i} key={m}>{m}</option>)}</select></label><span className="toolbar-note">Source: Petty Cash Index</span></div><div className="stats-grid three"><StatCard label={`${snapshot.months[month]} expenses`} value={compact(total)} detail="Recorded office costs" tone="pink"/><StatCard label="Annual recorded expenses" value={compact(year)} detail="All categories and months" tone="blue"/><StatCard label="Largest category" value={largest?.category || '—'} detail={largest ? rupees(largest.amount) : 'No entries'} tone="orange"/></div><section className="surface office-chart"><div className="surface-head"><h3>{snapshot.months[month]} category spending</h3><span>{expenses.length} categories</span></div><Bars data={expenses.map(e => ({ label: e.category, value: e.amount }))} color="blue" maxHeight={300}/></section><section className="surface table-surface"><div className="surface-head"><h3>Expense register</h3><span>{snapshot.months[month]}</span></div><div className="table-scroll"><table><thead><tr><th>Category</th><th>Selected month</th><th>2026 total</th></tr></thead><tbody>{snapshot.expenses.map(e => <tr key={e.category}><td><b>{e.category}</b></td><td>{rupees(e.monthly[month])}</td><td>{rupees(sum(e.monthly))}</td></tr>)}</tbody><tfoot><tr><td>Total</td><td>{rupees(total)}</td><td>{rupees(year)}</td></tr></tfoot></table></div></section></>
+  return <><PageHeading eyebrow="INDIA OFFICE" title="India Office Management" description="Monitor petty cash and operational expenses by category."/><div className="toolbar"><label>Reporting month<select value={month} onChange={e => setMonth(Number(e.target.value))}>{snapshot.months.map((m, i) => <option value={i} key={m}>{m}</option>)}</select></label><span className="toolbar-note">Source: Petty Cash</span></div><div className="stats-grid three"><StatCard label={`${snapshot.months[month]} expenses`} value={compact(total)} detail="Recorded office costs" tone="pink"/><StatCard label="Annual recorded expenses" value={compact(year)} detail="All categories and months" tone="blue"/><StatCard label="Largest category" value={largest?.category || '—'} detail={largest ? rupees(largest.amount) : 'No entries'} tone="orange"/></div><section className="surface office-chart"><div className="surface-head"><h3>{snapshot.months[month]} category spending</h3><span>{expenses.length} categories</span></div><Bars data={expenses.map(e => ({ label: e.category, value: e.amount }))} color="blue" maxHeight={300}/></section><section className="surface table-surface"><div className="surface-head"><h3>Expense register</h3><span>{snapshot.months[month]}</span></div><div className="table-scroll"><table><thead><tr><th>Category</th><th>Selected month</th><th>2026 total</th></tr></thead><tbody>{snapshot.expenses.map(e => <tr key={e.category}><td><b>{e.category}</b></td><td>{rupees(e.monthly[month])}</td><td>{rupees(sum(e.monthly))}</td></tr>)}</tbody><tfoot><tr><td>Total</td><td>{rupees(total)}</td><td>{rupees(year)}</td></tr></tfoot></table></div></section></>
 }
 
 function PageHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
-  return <div className="section-intro"><div><span className="eyebrow">{eyebrow}</span><h2>{title}</h2><p>{description}</p></div><span className="source-pill">2026 workbook snapshot</span></div>
+  const live = useLiveMode()
+  return <div className="section-intro"><div><span className="eyebrow">{eyebrow}</span><h2>{title}</h2><p>{description}</p></div><span className="source-pill">{live ? 'Live database' : '2026 workbook snapshot'}</span></div>
 }
 
-function Workspace({ role, onExit }: { role: Role; onExit: () => void }) {
+function Workspace({ role, onExit, partnerName = 'RAISE', live = false }: { role: Role; onExit: () => void; partnerName?: string; live?: boolean }) {
   const route = useRoute()
   const section = (route.split('/')[2] || 'dashboard') as Section
   const active = sections.some(s => s.id === section) ? section : 'dashboard'
   const partnerSection = /^(dashboard|q[1-4])$/.test(section) ? section : 'dashboard'
   const [menuOpen, setMenuOpen] = useState(false)
-  const partnerName = 'RAISE'
   const title = role === 'admin' ? sections.find(s => s.id === active)?.label : role === 'partner' ? partnerSection.toUpperCase() : 'Dashboard'
-  return <div className="workspace"><aside className={`sidebar ${menuOpen ? 'open' : ''}`}><div className="side-brand"><span className="mark">IGP</span><span>IGP India<small>Financial Dashboard 2026</small></span><button className="mobile-close" onClick={() => setMenuOpen(false)} aria-label="Close menu"><Icon name="close"/></button></div><div className="side-label">WORKSPACE</div><nav>{role === 'admin' ? sections.map(item => <a key={item.id} href={`#/admin/${item.id}`} onClick={() => setMenuOpen(false)} className={active === item.id ? 'active' : ''}><Icon name={item.icon} size={19}/><span>{item.label}</span></a>) : role === 'partner' ? ['dashboard', 'q1', 'q2', 'q3', 'q4'].map(item => <a key={item} href={`#/partner/${item}`} onClick={() => setMenuOpen(false)} className={partnerSection === item ? 'active' : ''}><Icon name={item === 'dashboard' ? 'grid' : 'calendar'} size={19}/><span>{item === 'dashboard' ? 'Dashboard' : item.toUpperCase()}</span></a>) : <a href={`#/${role}/dashboard`} className="active"><Icon name="grid" size={19}/><span>Dashboard</span></a>}</nav><div className="side-bottom"><div className="side-source"><span className="source-light"/><div>Workbook preview<small>{role === 'partner' ? 'Workbook + local entries' : 'Read-only data snapshot'}</small></div></div><button onClick={onExit}><Icon name="logout" size={18}/> Exit preview</button></div></aside><div className="workspace-main"><header className="workspace-top"><div className="top-left"><button className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Icon name="menu"/></button><span>IGP India</span><span className="chevron">/</span><b>{title}</b></div><div className="top-right"><span className="year-pill">2026</span><div className="avatar">{role === 'admin' ? 'AD' : role === 'partner' ? 'PT' : role === 'sponsor' ? 'CS' : 'AP'}</div><div className="account-name"><b>{roleLabels[role]}</b><small>Preview mode</small></div></div></header><main className="workspace-content"><div className="preview-banner"><Icon name="shield" size={17}/><span>Frontend preview. Workbook figures are static; partner entries save only in this browser. Authentication and Excel sync are not connected yet.</span></div>{role === 'admin' ? active === 'dashboard' ? <Dashboard/> : active === 'grants' ? <Grants/> : active === 'schedule' ? <Schedule/> : active === 'received' ? <Received/> : <Office/> : role === 'partner' ? <PartnerWorkspace partnerName={partnerName} section={partnerSection}/> : role === 'sponsor' ? <ChildSponsorDashboard/> : <ApeDashboard/>}<footer className="workspace-footer">IGP India Dashboard · 2026 workbook preview</footer></main></div>{menuOpen && <button className="mobile-scrim" aria-label="Close menu" onClick={() => setMenuOpen(false)}/>}</div>
+  return <div className="workspace"><aside className={`sidebar ${menuOpen ? 'open' : ''}`}><div className="side-brand"><span className="mark">IGP</span><span>IGP India<small>Financial Dashboard 2026</small></span><button className="mobile-close" onClick={() => setMenuOpen(false)} aria-label="Close menu"><Icon name="close"/></button></div><div className="side-label">WORKSPACE</div><nav>{role === 'admin' ? sections.map(item => <a key={item.id} href={`#/admin/${item.id}`} onClick={() => setMenuOpen(false)} className={active === item.id ? 'active' : ''}><Icon name={item.icon} size={19}/><span>{item.label}</span></a>) : role === 'partner' ? ['dashboard', 'q1', 'q2', 'q3', 'q4'].map(item => <a key={item} href={`#/partner/${item}`} onClick={() => setMenuOpen(false)} className={partnerSection === item ? 'active' : ''}><Icon name={item === 'dashboard' ? 'grid' : 'calendar'} size={19}/><span>{item === 'dashboard' ? 'Dashboard' : item.toUpperCase()}</span></a>) : <a href={`#/${role}/dashboard`} className="active"><Icon name="grid" size={19}/><span>Dashboard</span></a>}</nav><div className="side-bottom"><div className="side-source"><span className="source-light"/><div>{live ? 'Live database' : 'Workbook preview'}<small>{live ? 'Supabase' : role === 'partner' ? 'Workbook + local entries' : 'Read-only data snapshot'}</small></div></div><button onClick={onExit}><Icon name="logout" size={18}/> {live ? 'Sign out' : 'Exit preview'}</button></div></aside><div className="workspace-main"><header className="workspace-top"><div className="top-left"><button className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Icon name="menu"/></button><span>IGP India</span><span className="chevron">/</span><b>{title}</b></div><div className="top-right"><span className="year-pill">2026</span><div className="avatar">{role === 'admin' ? 'AD' : role === 'partner' ? 'PT' : role === 'sponsor' ? 'CS' : 'AP'}</div><div className="account-name"><b>{roleLabels[role]}</b><small>{live ? 'Signed in' : 'Preview mode'}</small></div></div></header><main className="workspace-content"><div className="preview-banner"><Icon name="shield" size={17}/><span>{live ? 'Signed in. Figures are loaded from Supabase; receipt and expense entry is not connected yet.' : 'Frontend preview. Workbook figures are static; partner entries save only in this browser.'}</span></div>{role === 'admin' ? active === 'dashboard' ? <Dashboard/> : active === 'grants' ? <Grants/> : active === 'schedule' ? <Schedule/> : active === 'received' ? <Received/> : <Office/> : role === 'partner' ? (live ? <LivePartnerWorkspace partnerName={partnerName} section={partnerSection}/> : <PartnerWorkspace partnerName={partnerName} section={partnerSection}/>) : role === 'sponsor' ? <ChildSponsorDashboard/> : <ApeDashboard/>}<footer className="workspace-footer">IGP India Dashboard · {live ? 'Live database' : '2026 workbook preview'}</footer></main></div>{menuOpen && <button className="mobile-scrim" aria-label="Close menu" onClick={() => setMenuOpen(false)}/>}</div>
 }
 
-export default function App() {
+function PreviewApp() {
   const route = useRoute()
+  const [previewData, setPreviewData] = useState<DashboardData | null>(null)
+  useEffect(() => {
+    fetch('/src/data/workbookSnapshot.json')
+      .then(response => response.json())
+      .then(value => setPreviewData(value as DashboardData))
+      .catch(() => setPreviewData(null))
+  }, [])
   const [role, setRole] = useState<Role>(() => { const value = sessionStorage.getItem('igp-preview-role'); return value && value in roleLabels ? value as Role : 'admin' })
   const enter = (next: Role) => { sessionStorage.setItem('igp-preview-role', next); setRole(next); go(`/${next}/dashboard`) }
   const exit = () => { sessionStorage.removeItem('igp-preview-role'); go('/login') }
   if (route === '/' || route === '/about') return <Landing/>
   if (route === '/login') return <Login onEnter={enter}/>
   const pathRole = route.split('/')[1] as Role
-  if (pathRole in roleLabels) return <Workspace role={pathRole === role ? role : pathRole} onExit={exit}/>
+  if (pathRole in roleLabels) return previewData ? <DataProvider data={previewData} live={false}><Workspace role={pathRole === role ? role : pathRole} onExit={exit}/></DataProvider> : <div className="live-state">Loading preview data…</div>
   return <Landing/>
+}
+
+function LiveLogin() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!supabase) return
+    setBusy(true); setError('')
+    const result = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    if (result.error) setError(result.error.message)
+    setBusy(false)
+  }
+  return <div className="login-page"><div className="login-left"><a className="wordmark light" href="#/"><span className="mark">IGP</span><span>Invisible Girl Project<small>Programme & finance workspace</small></span></a><div className="login-message"><span className="overline">IGP INDIA · 2026</span><h1>Welcome back to your workspace.</h1><p>Sign in with the account assigned by your administrator.</p></div></div><main className="login-right"><div className="login-content"><button className="text-link" onClick={() => go('/')}><span>←</span> Back to home</button><span className="overline pink">SECURE ACCESS</span><h2>Login</h2><p>Your account determines whether you see Admin, Child Sponsor, APE, or your own Partner workspace.</p><form className="live-login-form" onSubmit={submit}><label>Email<input type="email" autoComplete="username" required value={email} onChange={event => setEmail(event.target.value)}/></label><label>Password<input type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)}/></label><button className="button button-solid continue" disabled={busy} type="submit">{busy ? 'Signing in…' : 'Sign in'}</button></form>{error && <p className="live-error" role="alert">{error}</p>}<div className="login-note"><Icon name="shield" size={16}/> Access is based on your assigned role, not a role chosen in the browser.</div></div></main></div>
+}
+type LiveProfile = { role: string; partner_id: string | null }
+function LiveApp() {
+  const route = useRoute()
+  const [user, setUser] = useState<User | null>(null)
+  const [authReady, setAuthReady] = useState(false)
+  const [profile, setProfile] = useState<LiveProfile | null>(null)
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    if (!supabase) return
+    let active = true
+    supabase.auth.getUser().then(({ data }) => { if (active) { setUser(data.user); setAuthReady(true) } })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active) { setUser(session?.user ?? null); setAuthReady(true) }
+    })
+    return () => { active = false; subscription.unsubscribe() }
+  }, [])
+  useEffect(() => {
+    const client = supabase
+    if (!client || !user) { setProfile(null); setData(null); return }
+    let active = true
+    setError('')
+    setProfile(null)
+    setData(null)
+    const load = async () => {
+      const result = await client.from('user_profiles').select('role,partner_id').eq('id', user.id).single()
+      if (result.error || !result.data) throw new Error('Your account has no assigned role. Ask the administrator to add your user profile.')
+      const nextData = await loadDashboardData()
+      if (active) { setProfile(result.data as LiveProfile); setData(nextData) }
+    }
+    load().catch(cause => { if (active) setError(cause instanceof Error ? cause.message : 'Could not load database data') })
+    return () => { active = false }
+  }, [user])
+  const signOut = async () => { await supabase?.auth.signOut(); go('/login') }
+  if (route === '/' || route === '/about') return <Landing/>
+  if (!authReady) return <div className="live-state">Checking your session…</div>
+  if (!user) return <LiveLogin/>
+  if (error) return <div className="live-state"><h2>Workspace unavailable</h2><p>{error}</p><button className="button button-solid" onClick={signOut}>Sign out</button></div>
+  if (!profile || !data) return <div className="live-state">Loading your workspace…</div>
+  const mappedRole: Role | null = profile.role === 'child_sponsor' ? 'sponsor'
+    : profile.role === 'admin' || profile.role === 'ape' || profile.role === 'partner' ? profile.role : null
+  if (!mappedRole) return <div className="live-state"><h2>Workspace not assigned</h2><p>This role does not yet have a dashboard.</p><button className="button button-solid" onClick={signOut}>Sign out</button></div>
+  if (route === '/login' || route.split('/')[1] !== mappedRole) {
+    queueMicrotask(() => go(`/${mappedRole}/dashboard`))
+    return <div className="live-state">Opening your workspace…</div>
+  }
+  return <DataProvider data={data}><Workspace role={mappedRole} partnerName={data.partners[0]?.name} live onExit={signOut}/></DataProvider>
+}
+
+export default function App() {
+  if (supabase) return <LiveApp/>
+  if (import.meta.env.DEV) return <PreviewApp/>
+  return <div className="live-state"><h2>Dashboard setup in progress</h2><p>The Supabase project URL and publishable key must be added to the Vercel environment before sign-in is available.</p></div>
 }

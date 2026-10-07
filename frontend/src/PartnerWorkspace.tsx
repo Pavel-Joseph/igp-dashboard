@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import snapshot from './data/workbookSnapshot.json'
+import { useDashboardData } from './data/SnapshotContext'
 
 type Entry = { id: string; partner: string; quarter: number; kind: 'received' | 'expense'; date: string; amount: number; description: string }
 type NewCounts = Record<string, number>
@@ -30,6 +30,7 @@ function ring(values: number[], fallback: string) {
 }
 
 export default function PartnerWorkspace({ partnerName, section }: { partnerName: string; section: string }) {
+  const snapshot = useDashboardData()
   const partner = snapshot.partners.find(p => p.name === partnerName) || snapshot.partners[0]
   const [entries, setEntries] = useState<Entry[]>(loadEntries)
   const [newCounts, setNewCounts] = useState<NewCounts>(loadCounts)
@@ -40,6 +41,7 @@ export default function PartnerWorkspace({ partnerName, section }: { partnerName
   const [notice, setNotice] = useState('')
   useEffect(() => { localStorage.setItem('igp-partner-preview-entries', JSON.stringify(entries)) }, [entries])
   useEffect(() => { localStorage.setItem('igp-partner-preview-new-counts', JSON.stringify(newCounts)) }, [newCounts])
+  if (!partner) return <section className="surface">Preview data is unavailable.</section>
   const ownEntries = entries.filter(entry => entry.partner === partner.name)
   const budget = quarters.map((_, q) => quarterTotal(partner.schedule, q))
   const received = quarters.map((_, q) => quarterTotal(partner.received, q) + total(ownEntries.filter(e => e.quarter === q && e.kind === 'received').map(e => e.amount)))

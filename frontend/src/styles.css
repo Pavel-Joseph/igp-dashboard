@@ -44,3 +44,12 @@
 .ape-intro-grid{display:grid;grid-template-columns:minmax(260px,1fr) minmax(0,1.5fr);gap:18px}.ape-highlight{background:linear-gradient(115deg,#1e3e6b,#842466);border-radius:16px;padding:24px 28px;color:#fff;box-shadow:0 12px 24px #183a6922}.ape-highlight>span{font-size:11px;letter-spacing:.12em;font-weight:800;color:#e7d8e7}.ape-highlight strong{display:block;font:800 clamp(28px,3vw,42px) Manrope;margin:7px 0}.ape-highlight p{margin:0;color:#e2eaf5;font-size:12px}.ape-coverage{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.ape-coverage>div{background:#fff;border:1px solid #e3e9f1;border-radius:14px;padding:22px;box-shadow:0 5px 18px #273c6f08}.ape-coverage span{display:block;color:#7b8ca2;font-size:12px;font-weight:700}.ape-coverage strong{display:block;font:800 29px Manrope;color:#203a63;margin-top:12px}.ape-table td:not(:first-child),.ape-table th:not(:first-child){text-align:right}.ape-table .chart-foot{line-height:1.5}.ape-targets{margin-top:18px}.ape-target-list{display:grid;gap:18px;margin:22px 0}.ape-target-list>div{display:grid;grid-template-columns:65px minmax(0,1fr) 75px;gap:13px;align-items:center;font-size:12px;font-weight:800;color:#4d6886}.ape-target-list>div>div{height:17px;background:#eef2f7;border-radius:20px;overflow:hidden}.ape-target-list i{display:block;height:100%;background:linear-gradient(90deg,#aa2b7e,#dd77b2);border-radius:20px}.ape-target-list strong{text-align:right;color:#203a63}
 @media(max-width:1060px){.ape-intro-grid{grid-template-columns:1fr}}
 @media(max-width:520px){.ape-coverage{gap:8px}.ape-coverage>div{padding:14px}.ape-coverage span{font-size:10px}.ape-coverage strong{font-size:22px}}
+
+.live-login-form{display:grid;gap:16px;margin-top:25px}
+.live-login-form label{display:grid;gap:7px;color:#526987;font-size:13px;font-weight:800}
+.live-login-form input{width:100%;padding:14px 15px;border:1px solid #d5dfec;border-radius:10px;background:#fff;color:#203a62;font:500 15px 'DM Sans',sans-serif}
+.live-login-form .continue{margin-top:8px}
+.live-error{color:#a71f43;font-size:13px;font-weight:700;line-height:1.5;margin:16px 0}
+.live-state{max-width:680px;margin:12vh auto;padding:38px;background:#fff;border:1px solid #e3e9f1;border-radius:17px;box-shadow:0 12px 40px #12294c12;color:#263f62}
+.live-state h2{font:800 28px Manrope;margin:0 0 12px}
+.live-state p{line-height:1.6}
